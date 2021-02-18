@@ -1,0 +1,5 @@
+# Ignore temporary and binaries
+obj
+bin
+# Don't commit config.json
+config.json
