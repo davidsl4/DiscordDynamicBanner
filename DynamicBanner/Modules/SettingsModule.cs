@@ -44,7 +44,7 @@ namespace DynamicBanner.Modules
         {
             await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
             
-            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                 .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
             UpdateDatabaseDelegate replaceDelegate;
@@ -63,7 +63,7 @@ namespace DynamicBanner.Modules
                 replaceDelegate = QueryExtensions.UpdateAsync;
             }
 
-            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
 
             Embed embed = null;
             var message = $"You've {(guild.Status ? "enabled" : "disabled")} the dynamic banner for this server";
@@ -204,7 +204,7 @@ namespace DynamicBanner.Modules
                     }
                 }
                 
-                var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+                var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                     .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
                 UpdateDatabaseDelegate replaceDelegate;
@@ -221,7 +221,7 @@ namespace DynamicBanner.Modules
 
                 guild.Status = false;
                 guild.BaseImageUrl = attachment.Url;
-                await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+                await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
 
                 const string body =
                     "You've changed the base image. This image will be used as a background to the dynamic values.\n" +
@@ -301,7 +301,7 @@ namespace DynamicBanner.Modules
             }
 
             await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
-            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                 .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
             UpdateDatabaseDelegate replaceDelegate;
@@ -317,7 +317,7 @@ namespace DynamicBanner.Modules
                 replaceDelegate = QueryExtensions.UpdateAsync;
             guild.Status = false;
             guild.EndpointUrl = url.AbsoluteUri;
-            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
 
             message = $"Endpoint URL have been updated to `{guild.EndpointUrl}`.";
             if (Context.CanSendEmbeds)
@@ -420,7 +420,7 @@ namespace DynamicBanner.Modules
                 return;
             }
             
-            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                 .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
             UpdateDatabaseDelegate replaceDelegate;
@@ -438,7 +438,7 @@ namespace DynamicBanner.Modules
             guild.FontName = font.Value.Family;
             guild.FontStyle = GoogleFont.FontVariants.Regular;
             
-            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
 
             var description = $"You've changed the render font to `{font.Value.Family}`.\n\n" +
                               "Since changing the font before reconfiguring all again can make your banner ugly, " +
@@ -476,7 +476,7 @@ namespace DynamicBanner.Modules
         {
             await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
             
-            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                 .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
             UpdateDatabaseDelegate replaceDelegate;
@@ -495,7 +495,7 @@ namespace DynamicBanner.Modules
                 replaceDelegate = QueryExtensions.UpdateAsync;
             }
 
-            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
 
             Embed embed = null;
             var message =
@@ -627,7 +627,7 @@ namespace DynamicBanner.Modules
 
             await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
             
-            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
                 .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
 
             UpdateDatabaseDelegate replaceDelegate;
@@ -648,7 +648,7 @@ namespace DynamicBanner.Modules
                 replaceDelegate = QueryExtensions.UpdateAsync;
             }
 
-            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
             
             message = $"You've changed the font weight to `{GoogleFont.VariantToHumanReadableVariant(fontVariant)}`.\n" +
                       "If this weight is supported by the selected font, it will be used.";
