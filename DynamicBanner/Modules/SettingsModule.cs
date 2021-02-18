@@ -447,7 +447,7 @@ namespace DynamicBanner.Modules
             const string changingStyleTitle = "Change the render style";
             var changingStyleBody = "You can make the font italic by using the `tgfontitl` command.\n" +
                                     "Use the `setfontweight` command to change the weight (regular, bold, semi-bold and etc.) " +
-                                    "to one of the following: ```" +
+                                    "to one of the following: ```\n" +
                                     font.Value.HumanReadableWeightVariants.Aggregate((string) null,
                                         (current, variant) => current == null ? variant : current + $"\n{variant}") +
                                     "```";

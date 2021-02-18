@@ -35,7 +35,7 @@ namespace DynamicBanner.Modules
                 return;
             }
 
-            await ReplyAsync($"Here is a list of variants for `{font.Value.Family}`:\n```" +
+            await ReplyAsync($"Here is a list of variants for `{font.Value.Family}`:\n```\n" +
                              font.Value.HumanReadableVariants.Aggregate((string) null,
                                  (current, variant) => current == null ? variant : current + $"\n{variant}") +
                              "```")
