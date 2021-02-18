@@ -116,27 +116,29 @@ namespace DynamicBanner.Models
                 (v & FontVariants.Italic) == 0));
 
         private static IEnumerable<string> VariantsToHumanReadableVariants(IEnumerable<FontVariants> variants) =>
-            variants.Select(v =>
+            variants.Select(VariantToHumanReadableVariant);
+
+        internal static string VariantToHumanReadableVariant(FontVariants v)
+        {
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+            switch (v)
             {
-                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                switch (v)
-                {
-                    case FontVariants.Regular:
-                        return "Regular";
-                    case FontVariants.Italic:
-                        return "Italic";
-                }
+                case FontVariants.Regular:
+                    return "Regular";
+                case FontVariants.Italic:
+                    return "Italic";
+            }
 
-                var isItalic = (v & FontVariants.Italic) == FontVariants.Italic;
-                var varWithoutItalic = isItalic ? v ^ FontVariants.Italic : v;
-                var numericWeight = varWithoutItalic.ToString().Substring(1);
-                if (HumanReadableWeights.TryGetValue(varWithoutItalic, out var variant))
-                    variant += $" ({numericWeight})";
-                else variant = numericWeight;
+            var isItalic = (v & FontVariants.Italic) == FontVariants.Italic;
+            var varWithoutItalic = isItalic ? v ^ FontVariants.Italic : v;
+            var numericWeight = varWithoutItalic.ToString().Substring(1);
+            if (HumanReadableWeights.TryGetValue(varWithoutItalic, out var variant))
+                variant += $" ({numericWeight})";
+            else variant = numericWeight;
 
-                if (isItalic) variant += " Italic";
+            if (isItalic) variant += " Italic";
 
-                return variant;
-            });
+            return variant;
+        }
     }
 }

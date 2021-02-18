@@ -359,7 +359,6 @@ namespace DynamicBanner.Modules
             await ReplyAsync(message, embed: embed).ConfigureAwait(false);
         }
 
-
         [Command("setfont")]
         [Summary("Change the font for the dynamic values")]
         [RequireContext(ContextType.Guild)]
@@ -464,6 +463,203 @@ namespace DynamicBanner.Modules
             else
             {
                 message = $"{description}\n\n**{changingStyleTitle}**\n{changingStyleBody}";
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("tgfontitl")]
+        [Summary("Toggle the italic for the font")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task ToggleFontItalicCommand()
+        {
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            
+            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                    FontStyle = GoogleFont.FontVariants.Italic
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                guild.FontStyle ^= GoogleFont.FontVariants.Italic;
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+
+            Embed embed = null;
+            var message =
+                "You've " + 
+                ((guild.FontStyle & GoogleFont.FontVariants.Italic) == GoogleFont.FontVariants.Italic ? "enabled" : "disabled") +
+                " the italic for the current font.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setfontweight")]
+        [Summary("Set the weight of the font (regular, semi-bold, bold)")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetFontWeightCommand([Remainder] string weight = null)
+        {
+            Embed embed = null;
+            string message = null;
+            
+            if (weight == null)
+            {
+                const string usage = "`setfontweight [Font weight]`",
+                    listOfWeightsTitle = "Font weights",
+                    listOfWeightsBody = "Based on your font, choose one of the following: `Thin`, `Extra light`, " +
+                                        "`Light`, `Regular`, `Medium`, `Semi-bold`, `Bold`, `Extra-bold`, `Black`, " +
+                                        "`Extra black`";
+                if (Context.CanSendEmbeds)
+                {
+                    var builder = new EmbedBuilder()
+                        .WithColor(_embedColor)
+                        .WithTitle("Invalid usage")
+                        .WithDescription($"Use: {usage}")
+                        .AddField(listOfWeightsTitle, listOfWeightsBody);
+                    embed = builder.Build();
+                }
+                else
+                {
+                    message = $"**Usage:** {usage}\n\n**{listOfWeightsTitle}:**\n{listOfWeightsBody}";
+                }
+                await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                return;
+            }
+            
+            GoogleFont.FontVariants fontVariant;
+
+            switch (weight.ToLowerInvariant())
+            {
+                case "100":
+                case "thin":
+                    fontVariant = GoogleFont.FontVariants.W100;
+                    break;
+                case "200":
+                case "extra light":
+                case "extra-light":
+                case "el":
+                    fontVariant = GoogleFont.FontVariants.W200;
+                    break;
+                case "300":
+                case "light":
+                    fontVariant = GoogleFont.FontVariants.W300;
+                    break;
+                case "400":
+                case "regular":
+                case "reg":
+                    fontVariant = GoogleFont.FontVariants.Regular;
+                    break;
+                case "500":
+                case "medium":
+                case "med":
+                    fontVariant = GoogleFont.FontVariants.W500;
+                    break;
+                case "600":
+                case "semi":
+                case "semi bold":
+                case "semi-bold":
+                    fontVariant = GoogleFont.FontVariants.W600;
+                    break;
+                case "700":
+                case "bold":
+                    fontVariant = GoogleFont.FontVariants.W700;
+                    break;
+                case "800":
+                case "extra bold":
+                case "extra-bold":
+                case "eb":
+                    fontVariant = GoogleFont.FontVariants.W800;
+                    break;
+                case "900":
+                case "black":
+                case "heavy":
+                    fontVariant = GoogleFont.FontVariants.W900;
+                    break;
+                case "950":
+                case "extra black":
+                case "extra-black":
+                case "ebl":
+                case "extra heavy":
+                case "extra-heavy":
+                case "eh":
+                    fontVariant = GoogleFont.FontVariants.W950;
+                    break;
+                default:
+                {
+                    message = "You've entered an invalid value.\nWeight should be one of the following: " +
+                              "`Thin`, `Extra light`, `Light`, `Regular`, `Medium`, `Semi-bold`, `Bold`, `Extra-bold`, " +
+                              "`Black`, `Extra black`";
+                    if (Context.CanSendEmbeds)
+                    {
+                        var builder = new EmbedBuilder()
+                            .WithColor(_embedColor)
+                            .WithTitle("Invalid usage")
+                            .WithDescription(message);
+                        embed = builder.Build();
+                        message = null;
+                    }
+
+                    await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                    return;
+                }
+            }
+
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            
+            var guild = await _queryFactory.Query("guilds").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                    FontStyle = fontVariant
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                var useItalic = (guild.FontStyle & GoogleFont.FontVariants.Italic) == GoogleFont.FontVariants.Italic;
+                guild.FontStyle = fontVariant;
+                if (useItalic) guild.FontStyle |= GoogleFont.FontVariants.Italic;
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            await replaceDelegate(_queryFactory.Query("guilds"), guild).ConfigureAwait(false);
+            
+            message = $"You've changed the font weight to `{GoogleFont.VariantToHumanReadableVariant(fontVariant)}`.\n" +
+                      "If this weight is supported by the selected font, it will be used.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
             }
 
             await ReplyAsync(message, embed: embed).ConfigureAwait(false);
