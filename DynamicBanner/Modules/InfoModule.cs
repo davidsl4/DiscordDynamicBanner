@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -13,7 +12,7 @@ namespace DynamicBanner.Modules
 {
     [SuppressMessage("ReSharper", "UnusedType.Global")]
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
-    [OrderedSummary("Information", 1)]
+    [Summary("Information"), CommandListPriority(1)]
     public class InfoModule : ModuleBase<DDBCommandContext>
     {
         private readonly Color _embedColor;
@@ -96,18 +95,19 @@ namespace DynamicBanner.Modules
                     mod.Commands.Any(cmd => !string.IsNullOrWhiteSpace(cmd.Summary))).OrderByDescending(mod =>
                 {
                     var orderAttribute =
-                        (OrderedSummary) mod.Attributes.FirstOrDefault(a => a.GetType() == typeof(OrderedSummary));
-                    var order = orderAttribute?.Order ?? 0;
+                        (CommandListPriorityAttribute) mod.Attributes.FirstOrDefault(a =>
+                            a.GetType() == typeof(CommandListPriorityAttribute));
+                    var order = orderAttribute?.Priority ?? 0;
                     return order;
-                }).ToImmutableDictionary(
-                    module => module, module => module.Commands.DistinctBy(cmd => (cmd.Name, cmd.Summary)).Aggregate(
-                        (string) null, (str, cmd) =>
-                        {
-                            str = str == null ? "" : str + "\n";
-                            str += "`" + _defaultPrefix + cmd.Name + "` - " + cmd.Summary;
-                            return str;
-                        })
-                );
+                }).Select<ModuleInfo, (ModuleInfo Key, string Value)>(module => (module,
+                        module.Commands.DistinctBy(cmd => (cmd.Name, cmd.Summary)).Aggregate(
+                            (string) null, (str, cmd) =>
+                            {
+                                str = str == null ? "" : str + "\n";
+                                str += "`" + _defaultPrefix + cmd.Name + "` - " + cmd.Summary;
+                                return str;
+                            })
+                    ));
 
             string message = null;
             Embed embed = null;
@@ -124,10 +124,11 @@ namespace DynamicBanner.Modules
             }
             else
             {
-                message = modules.Aggregate((string) null, (str, module) =>
+                message = modules.Aggregate((string) null, (str, moduleKvp) =>
                 {
                     str = str == null ? "" : str + "\n\n";
-                    str += $"**{module.Key.Summary}**\n{module.Value}";
+                    var (module, commands) = moduleKvp;
+                    str += $"**{module.Summary}**\n{commands}";
                     return str;
                 });
             }
