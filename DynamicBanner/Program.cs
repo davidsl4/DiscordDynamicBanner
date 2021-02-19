@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using System.Threading.Tasks;
+using DynamicBanner.DDBProtocol;
 using SqlKata.Execution;
 
 namespace DynamicBanner
@@ -33,6 +34,8 @@ namespace DynamicBanner
                 // Add bot services
                 .AddSingleton<StartupService>()
                 .AddSingleton<FontsService>()
+                .AddSingleton<DdbProtocolService>()
+                .AddSingleton<BackgroundService>()
                 // Add config
                 .AddSingleton<IConfiguration>(new ConfigurationBuilder()
                     .AddJsonFile(Path.GetFullPath(Environment.GetEnvironmentVariable("settings file") ?? "config.json", AppContext.BaseDirectory))

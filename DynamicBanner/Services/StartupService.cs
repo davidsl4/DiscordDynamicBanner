@@ -1,7 +1,9 @@
 using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
+using DynamicBanner.DDBProtocol;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
@@ -15,11 +17,15 @@ namespace DynamicBanner.Services
     {
         private readonly DiscordSocketClient _discord;
         private readonly IConfiguration _config;
+        private readonly BackgroundService _backgroundService;
+        private readonly DdbProtocolService _ddbProtocol;
 
         public StartupService(IServiceProvider services)
         {
             _config = services.GetRequiredService<IConfiguration>();
             _discord = services.GetRequiredService<DiscordSocketClient>();
+            _backgroundService = services.GetRequiredService<BackgroundService>();
+            _ddbProtocol = services.GetRequiredService<DdbProtocolService>();
 
             var (_, installedMethods, installedCommands) = services.GetRequiredService<CommandHandler>().InstallCommandsAsync().GetAwaiter()
                 .GetResult();
@@ -39,6 +45,7 @@ namespace DynamicBanner.Services
                 Database = config["db"]
             };
             queryFactory.Connection = new MySqlConnection(queryBuilder.ConnectionString);
+            queryFactory.Connection.Open();
             queryFactory.Compiler = new MySqlCompiler();
         }
 
@@ -54,6 +61,8 @@ namespace DynamicBanner.Services
 
             await _discord.LoginAsync(TokenType.Bot, discordToken).ConfigureAwait(false);
             await _discord.StartAsync().ConfigureAwait(false);
+            
+            _backgroundService.Start();
         }
     }
 }
