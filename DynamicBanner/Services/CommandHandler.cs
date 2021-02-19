@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using DynamicBanner.Modules;
@@ -27,6 +28,7 @@ namespace DynamicBanner.Services
             _defaultPrefix = serviceProvider.GetRequiredService<IConfiguration>()["default_prefix"];
             
             _commands.AddTypeReader<Uri>(new UrlTypeReader());
+            _commands.AddTypeReader<Color>(new ColorTypeReader());
         }
         
         public async Task<(int modules, int methods, int commands)> InstallCommandsAsync()

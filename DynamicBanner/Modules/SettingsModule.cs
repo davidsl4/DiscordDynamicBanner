@@ -664,5 +664,249 @@ namespace DynamicBanner.Modules
 
             await ReplyAsync(message, embed: embed).ConfigureAwait(false);
         }
+
+        [Command("setfontsize")]
+        [Summary("Set the font size in pixels")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Priority(1)]
+        public async Task SetFontSize(float size)
+        {
+            Embed embed = null;
+            string message;
+
+            if (size < 1)
+            {
+                message = "Font size cannot be less than 1.";
+                if (Context.CanSendEmbeds)
+                {
+                    var builder = new EmbedBuilder()
+                        .WithColor(_embedColor)
+                        .WithTitle("Invalid usage")
+                        .WithDescription(message);
+                    embed = builder.Build();
+                    message = null;
+                }
+
+                await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                return;
+            }
+
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.FontSize = size;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+            
+            message = $"You've changed the font size to `{size}px`.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+        
+        [Command("setfontsize")]
+        [Summary("Set the font size in pixels")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetFontSize()
+        {
+            Embed embed = null;
+            string message = null;
+            
+            const string usage = "`setfontsize [Font size (in pixels)]`";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Invalid usage")
+                    .WithDescription($"Use: {usage}");
+                embed = builder.Build();
+            }
+            else
+            {
+                message = $"**Usage:** {usage}";
+            }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setcolor")]
+        [Summary("Set the font color")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Priority(1)]
+        public async Task SetFontColorCommand(Color color)
+        {
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.FontColor = color.RawValue;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+            
+            var message = $"You've changed the font color to `#{color.RawValue:X6}`.";
+            Embed embed = null;
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(color)
+                    .WithTitle("Success")
+                    .WithDescription(message)
+                    .AddField(":bulb: Did you know?", "You can see the set color on the left side of this message.");
+                embed = builder.Build();
+                message = null;
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setcolor")]
+        [Summary("Set the font color")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetFontColorCommand()
+        {
+            Embed embed = null;
+            string message = null;
+            
+            const string usage = "`setcolor [Color HEX code]`";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Invalid usage")
+                    .WithDescription($"Use: {usage}");
+                embed = builder.Build();
+            }
+            else
+            {
+                message = $"**Usage:** {usage}";
+            }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setrot")]
+        [Summary("Set the rotation radius for the text")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Priority(1)]
+        public async Task SetFontRotationCommand(short rotationRadius)
+        {
+            Embed embed = null;
+            string message;
+
+            if (rotationRadius < 0 || rotationRadius > 359)
+            {
+                message = "Rotation radius cannot be less than 0 or bigger than 359.";
+                if (Context.CanSendEmbeds)
+                {
+                    var builder = new EmbedBuilder()
+                        .WithColor(_embedColor)
+                        .WithTitle("Invalid usage")
+                        .WithDescription(message);
+                    embed = builder.Build();
+                    message = null;
+                }
+
+                await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                return;
+            }
+            
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.FontRotationRadius = (ushort)rotationRadius;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+            
+            message = $"You've changed the rotation radius to `{rotationRadius}°`.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+        
+        [Command("setrot")]
+        [Summary("Set the rotation radius for the text")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetFontRotationCommand()
+        {
+            Embed embed = null;
+            string message = null;
+        
+            const string usage = "`setrot [Rotation radius]`";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Invalid usage")
+                    .WithDescription($"Use: {usage}");
+                embed = builder.Build();
+            }
+            else
+            {
+                message = $"**Usage:** {usage}";
+            }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
     }
 }
