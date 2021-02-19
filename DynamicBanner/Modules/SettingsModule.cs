@@ -13,6 +13,7 @@ using SqlKata.Execution;
 using System;
 using System.IO;
 using DynamicBanner.Services;
+using Humanizer;
 using Image = System.Drawing.Image;
 
 namespace DynamicBanner.Modules
@@ -906,6 +907,171 @@ namespace DynamicBanner.Modules
             {
                 message = $"**Usage:** {usage}";
             }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setalign")]
+        [Summary("Set the font alignment for the text")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetFontAlignmentCommand(string align = null)
+        {
+            Embed embed = null;
+            string message = null;
+
+            CHECK_ALIGNMENT: if (align == null)
+            {
+                const string usage = "`setalign [Font alignment]`",
+                    acceptableValuesTitle = "Acceptable values",
+                    acceptableValuesBody = "`left`, `right`, and `center`";
+                if (Context.CanSendEmbeds)
+                {
+                    var builder = new EmbedBuilder()
+                        .WithColor(_embedColor)
+                        .WithTitle("Invalid usage")
+                        .WithDescription($"Use: {usage}")
+                        .AddField(acceptableValuesTitle, acceptableValuesBody);
+                    embed = builder.Build();
+                }
+                else
+                {
+                    message = $"**Usage:** {usage}\n\n**{acceptableValuesTitle}:**\n{acceptableValuesBody}";
+                }
+                await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                return;
+            }
+
+            FontAlignment fontAlignment = align.ToLowerInvariant() switch
+            {
+                "l" => FontAlignment.Left,
+                "left" => FontAlignment.Left,
+                "c" => FontAlignment.Center,
+                "center" => FontAlignment.Center,
+                "r" => FontAlignment.Right,
+                "right" => FontAlignment.Right,
+                _ => 0
+            };
+            if (fontAlignment == 0)
+            {
+                align = null;
+                goto CHECK_ALIGNMENT;
+            }
+            
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.FontAlignment = fontAlignment;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+            
+            message = $"You've changed the font alignment to `{fontAlignment.ToString().ToLowerInvariant()}`.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+
+        [Command("setpattern")]
+        [Summary("Set the pattern selector for the endpoint")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetJsonPathSelector([Remainder] string selector = null)
+        {
+            Embed embed = null;
+            string message = null;
+
+            if (selector == null)
+            {
+                const string usage = "`setpattern [Pattern]`",
+                    remarksTitle = "Remark",
+                    remarksBodyTemplate = "We're using {0} to select values from the endpoint.\n\n" +
+                                          "If you aren't familiar with {1} you can use {2} to generate one for you.\n" +
+                                          "**Note:** Some services may use `x`, `?`, and such placeholders at the start " +
+                                          "of the pattern. Make sure to replace them with `$` (dollar sign) until you " +
+                                          "understand what you're doing. Mostly like your pattern should start with `$.`\n\n" +
+                                          "To check the validity of your pattern, you can use {3}.\n\n" +
+                                          "Also, note that we're publishing popular patterns on our support server.",
+                    jsonPathSyntaxDocumentationUrl =
+                        "https://support.smartbear.com/alertsite/docs/monitors/api/endpoint/jsonpath.html",
+                    technologyName = "JSONPath",
+                    generatorUrl = "https://jsonpathfinder.com/",
+                    evaluatorUrl = "http://jsonpath.com/";
+                if (Context.CanSendEmbeds)
+                {
+                    var builder = new EmbedBuilder()
+                        .WithColor(_embedColor)
+                        .WithTitle("Invalid usage")
+                        .WithDescription($"Use: {usage}")
+                        .AddField(remarksTitle,
+                            remarksBodyTemplate.FormatWith(technologyName,
+                                $"[{technologyName}]({jsonPathSyntaxDocumentationUrl})",
+                                $"services such as [JSON path finder]({generatorUrl})",
+                                $"services such as [jsonpath online evaluator]({evaluatorUrl})"));
+                    embed = builder.Build();
+                }
+                else
+                {
+                    message = $"**Usage:** {usage}\n\n**{remarksTitle}:**\n" +
+                              remarksBodyTemplate.FormatWith(technologyName,
+                                  $"{technologyName} ({jsonPathSyntaxDocumentationUrl})", $"services such as {generatorUrl}", $"services such as {evaluatorUrl}");
+                }
+                await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+                return;
+            }
+            
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.EndpointPathSelector = selector;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+            
+            message = "You've changed the pattern selector.\n" +
+                      "Hopefully, you've checked that on some online services to make sure it is correct and returns the " +
+                      "value you want since we aren't.";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+
             await ReplyAsync(message, embed: embed).ConfigureAwait(false);
         }
     }
