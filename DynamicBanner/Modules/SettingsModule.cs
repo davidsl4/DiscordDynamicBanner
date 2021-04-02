@@ -1074,5 +1074,74 @@ namespace DynamicBanner.Modules
 
             await ReplyAsync(message, embed: embed).ConfigureAwait(false);
         }
+
+        [Command("setpos")]
+        [Summary("Set the render position of the text")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        public async Task SetTextPosition()
+        {
+            Embed embed = null;
+            string message = null;
+        
+            const string usage = "`setpos [X axis] [Y axis]`";
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Invalid usage")
+                    .WithDescription($"Use: {usage}");
+                embed = builder.Build();
+            }
+            else
+            {
+                message = $"**Usage:** {usage}";
+            }
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
+        
+        [Command("setpos")]
+        [Summary("Set the render position of the text")]
+        [RequireContext(ContextType.Guild)]
+        [RequireUserPermission(GuildPermission.ManageGuild)]
+        [Priority(1)]
+        public async Task SetTextPosition(float x, float y)
+        {
+            await Context.Channel.TriggerTypingAsync().ConfigureAwait(false);
+            var guild = await _queryFactory.Query("guild").Where("ID", Context.Guild.Id)
+                .FirstOrDefaultAsync<GuildProps>().ConfigureAwait(false);
+            UpdateDatabaseDelegate replaceDelegate;
+            if (guild == null)
+            {
+                guild = new GuildProps
+                {
+                    Id = Context.Guild.Id,
+                };
+                replaceDelegate = QueryExtensions.InsertAsync;
+            }
+            else
+            {
+                replaceDelegate = QueryExtensions.UpdateAsync;
+            }
+
+            guild.DrawX = x;
+            guild.DrawY = y;
+            await replaceDelegate(_queryFactory.Query("guild"), guild).ConfigureAwait(false);
+
+            var message = "You've successfully changed the draw position.";
+            Embed embed = null;
+            
+            if (Context.CanSendEmbeds)
+            {
+                var builder = new EmbedBuilder()
+                    .WithColor(_embedColor)
+                    .WithTitle("Success")
+                    .WithDescription(message);
+                embed = builder.Build();
+                message = null;
+            }
+
+            await ReplyAsync(message, embed: embed).ConfigureAwait(false);
+        }
     }
 }

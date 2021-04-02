@@ -19,5 +19,7 @@ namespace DynamicBanner.Models
         public uint FontColor { get; set; }
         public ushort FontRotationRadius { get; set; }
         public FontAlignment FontAlignment { get; set; }
+        public float DrawX { get; set; }
+        public float DrawY { get; set; }
     }
 }
