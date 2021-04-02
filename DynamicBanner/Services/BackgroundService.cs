@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Concurrent;
+using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Timers;
@@ -12,7 +15,6 @@ using Discord.WebSocket;
 using DynamicBanner.DDBProtocol;
 using DynamicBanner.Models;
 using Microsoft.Extensions.Configuration;
-using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 using SqlKata.Execution;
 using Timer = System.Timers.Timer;
@@ -26,15 +28,18 @@ namespace DynamicBanner.Services
         private readonly byte _simultaneousThreadsCount;
         private readonly DdbProtocolService _ddbProtocol;
         private readonly Timer _timer = new(1000 * 60);
+        private readonly FontsService _fontsService;
 
         public BackgroundService(QueryFactory queryFactory, DiscordSocketClient discordClient, IConfiguration config,
-            DdbProtocolService ddbProtocol)
+            DdbProtocolService ddbProtocol, FontsService fontsService)
         {
             _queryFactory = queryFactory;
             _discordClient = discordClient;
             _ddbProtocol = ddbProtocol;
+            _fontsService = fontsService;
             if (!byte.TryParse(config["simultaneous_threads"], out _simultaneousThreadsCount))
                 _simultaneousThreadsCount = 5;
+            
             _timer.Elapsed += OnTimerElapsed;
         }
 
@@ -42,20 +47,21 @@ namespace DynamicBanner.Services
         
         private async void OnTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            await using var connection = new MySqlConnection(_queryFactory.Connection.ConnectionString);
-            await connection.OpenAsync().ConfigureAwait(false);
+            using var connection = (IDbConnection)((ICloneable)_queryFactory.Connection).Clone();
+            connection.Open();
             var guildsToUpdate = (await connection
                 .QueryAsync<GuildProps>("SELECT * FROM `guild` WHERE `NextUpdate` <= UTC_TIMESTAMP AND `Status` = TRUE")
                 .ConfigureAwait(false)).ToArray();
+            if (guildsToUpdate.Length == 0) return; // skip future steps if there are no servers to update yet
             await connection.QueryAsync(
                 "UPDATE `guild` SET `NextUpdate` = ADDDATE(UTC_TIMESTAMP, INTERVAL `UpdateInterval` MINUTE) WHERE `ID` IN @ids",
                 new {ids = guildsToUpdate.Select(g => g.Id)}).ConfigureAwait(false);
-            await connection.CloseAsync().ConfigureAwait(false);
+            connection.Close();
 
             var guildsByGroups = guildsToUpdate.GroupBy(g => g.EndpointUrl);
             var taskList = new Task[_simultaneousThreadsCount];
             var installedThreads = 0;
-            ConcurrentStack<ulong> invalidDiscordServerIds = new ConcurrentStack<ulong>();
+            var invalidDiscordServerIds = new ConcurrentStack<ulong>();
             var locker = new object();
 
             void PlanToStartOnNewThreadWithArgs(Action<object> action, Task[] tasks, object state)
@@ -67,16 +73,13 @@ namespace DynamicBanner.Services
                         tasks[slot] = Task.Run(() =>
                         {
                             action(state);
-                            lock (locker)
-                            {
-                                tasks[slot] = null;
-                            }
                         });
                     }
                 }
                 if (installedThreads < taskList.Length)
                 {
                     InstallOnSlot(installedThreads++);
+                    return;
                 }
 
                 lock (locker)
@@ -141,7 +144,7 @@ namespace DynamicBanner.Services
                                 if (token.Type != JTokenType.Integer)
                                     throw new NotSupportedException("Invalid value type");
 
-                                using var image = await GetUpdatedDiscordBanner(guildProps, (int) token.Value)
+                                using var image = await GetUpdatedDiscordBanner(guildProps, Convert.ToInt32(token.Value))
                                     .ConfigureAwait(false);
                                 var ms = new MemoryStream();
                                 image.Save(ms, ImageFormat.Png);
@@ -149,8 +152,8 @@ namespace DynamicBanner.Services
                                 await socketGuild.ModifyAsync(gp =>
                                 {
                                     gp.Banner = new Discord.Image(ms);
-                                    ms.Dispose();
                                 }).ConfigureAwait(false);
+                                await ms.DisposeAsync().ConfigureAwait(false);
                             }
                             catch
                             {
@@ -161,7 +164,7 @@ namespace DynamicBanner.Services
                 }, taskList);
             }
 
-            Task.WaitAll(taskList);
+            Task.WaitAll(taskList.Where(t => t != null).ToArray());
         }
 
         public async Task<Image> GetUpdatedDiscordBanner(GuildProps guildProps, int value)
@@ -169,7 +172,35 @@ namespace DynamicBanner.Services
             var guild = _discordClient.GetGuild(guildProps.Id);
             if (guild == null || !guild.Features.Contains("BANNER")) return null;
 
-            throw new NotImplementedException();
+            using var wc = new WebClient();
+            await using var readStream = await wc.OpenReadTaskAsync(guildProps.BaseImageUrl).ConfigureAwait(false);
+            using var image = Image.FromStream(readStream);
+            var graphics = Graphics.FromImage(image);
+            graphics.SmoothingMode = SmoothingMode.HighQuality;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.PageUnit = GraphicsUnit.Pixel;
+
+            var fontFamily = await _fontsService.GetOrDownloadFontAsync(guildProps.FontName, guildProps.FontStyle, wc)
+                .ConfigureAwait(false);
+
+            if (fontFamily == null) return null;
+            
+            graphics.RotateTransform(guildProps.FontRotationRadius, MatrixOrder.Append);
+            graphics.TranslateTransform(guildProps.DrawX, guildProps.DrawY);
+            var valueToDraw = value.ToString();
+            var fontToUse = new Font(fontFamily, guildProps.FontSize, GraphicsUnit.Pixel);
+            var valueMeasure = graphics.MeasureString(valueToDraw, fontToUse);
+            //graphics.FillRectangle(new SolidBrush(Color.DarkRed), 0, 0, valueMeasure.Width, valueMeasure.Height);
+            graphics.DrawString(valueToDraw, fontToUse, new SolidBrush(Color.FromArgb((int)(0xff000000 | guildProps.FontColor))), guildProps.FontAlignment switch
+            {
+                FontAlignment.Left => 0,
+                FontAlignment.Center => -valueMeasure.Width / 2,
+                FontAlignment.Right => -valueMeasure.Width,
+                _ => guildProps.DrawX
+            }, 0);
+
+            return image;
         }
     }
 }
